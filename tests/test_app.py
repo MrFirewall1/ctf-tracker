@@ -520,3 +520,21 @@ def test_run_script_exists_and_port_is_configurable():
     text = sh.read_text(encoding="utf-8")
     assert "kill -9" in text and "-m app" in text and "CTF_PORT" in text      # stopper kun egen app
     assert 'CTF_PORT' in (root / "app" / "__main__.py").read_text(encoding="utf-8")
+
+
+def test_recommendation_targets_weakest_area():
+    from app import recommend
+    tasks = [{"category": "web", "status": "unsolved"}, {"category": "web", "status": "solved_alone"},
+             {"category": "crypto", "status": "solved_alone"}, {"category": "crypto", "status": "solved_hint"},
+             {"category": "forensics", "status": "solved_solution"}, {"category": "forensics", "status": "unsolved"}]
+    order = [w["key"] for w in recommend.weak_categories(tasks)]
+    assert order[:2] == ["forensics", "web"]                      # 0 % før 50 %; crypto (100 %) er ikke «svak»
+    assert set(order) == {"forensics", "web", "pcap_ics", "reversing", "other"}   # crypto (2/2 løst) er ikke svak og ikke uprøvd
+    entries = [{"id": "a", "category": "web", "difficulty": "medium"}, {"id": "b", "category": "web", "difficulty": "easy"},
+               {"id": "c", "category": "forensics", "difficulty": "easy"}]
+    r = recommend.recommend(tasks, entries, set())
+    assert r["category"]["key"] == "forensics" and r["entry"]["id"] == "c"
+    r = recommend.recommend(tasks, entries, {"c"})                 # forensics tomt -> neste svake: web, lett før middels
+    assert r["category"]["key"] == "web" and r["entry"]["id"] == "b"
+    assert recommend.recommend(tasks, entries, {"a", "b", "c"}) is None
+    assert recommend.weak_categories([])[0]["reason"] == "ikke prøvd ennå"

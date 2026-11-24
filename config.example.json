@@ -1,3 +1,5 @@
 {
-  "data_dir": "/mnt/d/ctf-data"
+  "data_dir": "~/ctf-tracker-data",
+  "downloads_dir": "",
+  "labs_dir": "~/ctf-labs"
 }

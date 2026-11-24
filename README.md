@@ -1,89 +1,101 @@
 # CTF-tracker
 
-Lokal webapp for å logge CTF-oppgaver, skrive egne forklaringer og se fremgang. Ingen AI-funksjoner, ingen eksterne API-er, ingen CDN: den fungerer helt offline.
+A small **local, offline** web app that helps you get better at CTFs: log every challenge you try, write your own explanation,
+see where you are weak, and get a nudge toward what to practice next.
 
-> ## ⚠️ Advarsel: hva du IKKE skal skrive eller sjekke inn
-> Datamappen blir et git-repo som pushes til GitHub (antatt privat, men reg det som delt).
-> - **Ikke** skriv interne firmaopplysninger, passord, tokens eller ekte nettverksdata (IP-er, vertsnavn, trafikk fra ekte miljøer) i forklaringene.
-> - **Ikke** sjekk inn rå konkurransefiler eller PCAP-er du ikke har rett til å dele. Appen lagrer bare tekst; hold filene dine utenfor datamappen.
+- **No AI features, no external APIs, no CDN, no telemetry.** It runs on `127.0.0.1` and your notes stay on your disk.
+- One Markdown file per logged challenge, kept in a folder you choose (put it in a private git repo if you like).
+- Works on Linux and on Windows via WSL. Python 3.10+. macOS should work for the app itself but is untested (the `run.sh` helper that stops an old copy uses Linux tools).
 
-## Oppstart
+> The user interface is currently in **Norwegian** (the catalog texts also have an English/Norwegian toggle).
+> Translating the UI is a welcome contribution, see [CONTRIBUTING.md](CONTRIBUTING.md). Norwegian docs: [README.no.md](README.no.md).
+
+## Quick start
 
 ```bash
-cd ~/ctf-tracker
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # første gang
-export CTF_DATA_DIR=/mnt/d/ctf-data      # SSD-stien din (eller sett data_dir i config.json)
-.venv/bin/python -m app init             # første gang: setter opp mappen
-.venv/bin/python -m app                  # starter på http://127.0.0.1:5000
+git clone https://github.com/<you>/ctf-tracker.git
+cd ctf-tracker
+./setup.sh          # creates .venv, installs dependencies, makes ~/ctf-tracker-data
+./run.sh            # starts the app and opens http://127.0.0.1:5000
 ```
 
-## Peke appen mot SSD-en
+Stop it with **Ctrl+C**. `run.sh` also stops an old copy of the app that is still holding the port.
+Use another data folder with `CTF_DATA_DIR=/path ./setup.sh`, or edit `config.json` (see `config.example.json`).
 
-Stien settes av, i prioritert rekkefølge:
-1. miljøvariabelen `CTF_DATA_DIR`
-2. `data_dir` i `config.json` (kopier `config.example.json`)
+## Tailor it to what you struggle with
 
-Det finnes ingen standardsti. Mappen må **allerede finnes** og være satt opp med `python -m app init`, som lager `tasks/`, `.gitignore` og markørfilen `.ctf-tracker`. Hvis stien mangler, SSD-en ikke er montert (tom monteringsmappe uten markørfil), eller mappen ikke er skrivbar, viser appen et rødt banner og nekter å lagre (HTTP 503). Den oppretter aldri data et annet sted.
+| What | Where |
+|---|---|
+| **Weakest areas** by category and protocol (needs at least 2 logged tasks) | Dashboard |
+| **Recommended for you**: the next unlogged task in your weakest area, easy before medium before hard | Dashboard, "Next missions" |
+| Filter the dashboard by category, difficulty and protocol | Dashboard |
+| Tasks to **revisit** (solved with a hint or the solution, and not solved cleanly later) | Dashboard |
+| A guided **warm-up**: intro to every category and two small tasks in each | Warm-up |
+| ~255 practice tasks with search, filters, XP per task and step-by-step "how to start" | Tasks |
+| **Answer checking** for the built-in labs (random flags generated on your machine) | Tasks / Warm-up |
+| Your own **video links** per category (YouTube, click-to-play, max 30 min each) | Warm-up |
+| A **phone reminder** as a calendar file (`.ics`) | Reminder |
+| A **PDF report** of what you logged, with your own words | Report |
 
-## Datalagring
+XP: easy 10, medium 25, hard 50. Solved alone gives full XP, with a hint 70 %, with the solution 20 %.
+"Solved" in the statistics means solved alone or with a hint. Solved with the solution counts as *not* solved, so weak spots are not hidden.
 
-- Én fil per oppgave: `<CTF_DATA_DIR>/tasks/ÅÅÅÅ-MM-DD-tittel.md`, med YAML-frontmatter og forklaringen som markdown. Filene er fasit og passer godt i git.
-- Skriving er trygg: skriver til en midlertidig fil, `fsync`, og så `rename` over målfilen. Trekker du ut SSD-en midt i en lagring, er enten gammel eller ny versjon intakt.
-- Ingen SQLite-indeks ennå: statistikken beregnes direkte fra filene, noe som er raskt nok for hundrevis av oppgaver.
+### Add your own tasks
 
-## Definisjoner i dashboardet
+`app/practice.json` is a plain list. Add an entry and it shows up under **Tasks**:
 
-- **Løst** = løst alene eller med hint. **Løst med fasit teller som ikke løst**, slik at svake områder ikke skjules.
-- **Treningsdag** = dag med minst én logget oppgave. **Streak** = sammenhengende dager (i går teller fortsatt).
-- **Svakeste områder** = kategorier/protokoller med minst 2 oppgaver og løsningsrate under 100 %, sortert stigende.
+```json
+{
+  "id": "my-first-task", "kind": "custom", "title": "Login bypass", "source": "My CTF · Team practice",
+  "url": "", "category": "web", "protocol": "", "difficulty": "easy",
+  "objective": "Get into the admin page.", "hints": ["Look at the cookies."], "tags": ["web"],
+  "no": {"title": "Innloggingsomgåelse", "objective": "Kom deg inn på admin-siden.", "hints": ["Se på cookies."]}
+}
+```
 
-## Git og GitHub
+Categories: `pcap_ics`, `web`, `crypto`, `reversing`, `forensics`, `other`. Difficulties: `easy`, `medium`, `hard`.
+Edit `INTROS` in `app/intro.py` to change the category introductions, and `WARMUP_TASKS` to pick the two warm-up tasks per category.
 
-Datamappen på SSD-en er et eget git-repo (ikke selve appkoden).
+## Where your data lives
 
-1. Opprett et **tomt, privat** repo på GitHub (uten README, ellers får du ulik historikk).
-2. Koble det til, én gang:
-   ```bash
-   .venv/bin/python -m app git-init git@github.com:BRUKER/REPO.git
-   ```
-   Kommandoen kjører `git init`, setter remote `origin`, og committer `.gitignore`, markørfilen og `tasks/`. Den kan kjøres flere ganger. Hvis du ikke har satt `user.name`/`user.email` i git, settes en nøytral identitet (`CTF-tracker`) kun i dette repoet.
-3. Hver gang du lagrer en oppgave committes akkurat den filen: `Legg til oppgave: <tittel>` (ny) eller `Oppdater oppgave: <tittel>`. Mislykkes git, er oppgaven likevel lagret, og du får en melding i skjemaet.
-4. **Push er manuell**: siden **Git** i appen har en knapp. Det skjer aldri automatisk.
+- `<data_dir>/tasks/YYYY-MM-DD-title.md`: one file per logged task, YAML front matter plus your Markdown explanation.
+- `<data_dir>/videos.json`: your video links. `<data_dir>/reports/`: generated PDFs (ignored by git).
+- Writes are atomic (temp file, `fsync`, rename). If the folder is missing or the drive is not mounted, the app shows a red banner and refuses to save.
 
-Push bruker SSH-nøkkelen din uten passordspørsmål (`BatchMode`). Har nøkkelen passfrase, må den ligge i `ssh-agent`. Nøkkelen må være lagt til på GitHub. Bare ssh- og https-URL-er godtas. `.gitignore` utelater `*.pdf`, `reports/`, `*.tmp` og SQLite-filer.
+**Do not log real company data, passwords, tokens or real network traffic.** If you push your data folder to GitHub, treat it as shared.
 
-## PDF-rapport
-
-Siden **Rapport**: velg periode og/eller oppgaver, og trykk «Lag PDF». Forside, sammendrag med diagrammer, og så én side per oppgave med metadata og forklaringene dine uendret (kun lange kodelinjer brytes visuelt). Laget med reportlab, uten systembibliotek. En kopi lagres i `<CTF_DATA_DIR>/reports/`, som ligger i `.gitignore`. Uten SSD nekter appen å lage rapport.
-
-## Oppvarming og egne øvelser
-
-- Siden **Oppvarming** viser en lokal katalog (`app/practice.json`) med enkle oppgaver. Den lastes ikke fra nett. «Logg denne» forhåndsutfyller skjemaet, og oppgaven markeres som logget via taggen `practice-<id>`.
-- LabEx-oppgavene er bare titler og lenker med korte beskrivelser skrevet av meg. Selve labene åpnes hos LabEx (krever nett).
-- **Språk (EN/NO):** oppgavene er engelske som standard, med en «Norsk»-knapp (og «Oversett» per kort). Norsk tekst ligger ferdig i `app/practice.json` (feltet `no`). Den ble laget på forhånd, så appen bruker verken AI, nett eller oversettelsestjeneste. «Logg denne» bruker språket du ser.
-- **Import fra ICS-PCAP-Challenges** (engangs): `python -I tools/import_ics_pcap.py ~/ctf-downloads/ICS-PCAP-Challenges 12`, deretter `python -I tools/build_practice_no.py`. Importerer bare tittel, scenario, mål og hint, aldri løsninger. Datasettene (PCAP) lastes ned separat med `scripts/fetch.py` i det repoet, til en mappe utenfor datamappen din.
-- Fire egne øvelser med **tilfeldige flagg** genereres lokalt. Flaggene skrives aldri ut, og bare hash lagres:
+## Optional: git backup of your notes
 
 ```bash
-.venv/bin/python -m labs generate ~/ctf-labs     # mappen må være ny/tom og utenfor datamappen
+.venv/bin/python -m app git-init git@github.com:<you>/ctf-data.git   # once, repo must be empty
+```
+
+Each logged task is committed. Pushing is manual (button on the **Git** page). Only ssh and https remotes are accepted.
+
+## Built-in practice labs
+
+```bash
+.venv/bin/python -m labs generate ~/ctf-labs          # random flags, only hashes are stored
 .venv/bin/python -m labs check ~/ctf-labs hidden-file 'CTF{...}'
 ```
 
-Øvelser: `hidden-file`, `log-secret`, `env-leak`, `modbus-flag` (liten PCAP med syntetiske adresser fra 192.0.2.0/24). Kjør `generate` på nytt i en ny mappe for nye flagg.
+Labs: `hidden-file`, `log-secret`, `env-leak`, `modbus-flag` (a small PCAP with synthetic addresses). The warm-up and task pages can check your answer too.
 
-## Tester
+## About the task catalog
+
+The catalog only **points** to practice material (titles, categories, links, short generic hints). It contains no solutions, flags or challenge files.
+Sources and licenses are listed in [NOTICE.md](NOTICE.md). Open each challenge on its own platform; some need a free account.
+Optional PCAP datasets (ICS-PCAP-Challenges) are downloaded separately; set `downloads_dir` to show which files you already have.
+
+## Development
 
 ```bash
 .venv/bin/python -m pytest
 ```
 
-## Kjøre i Kali (eller på en annen maskin)
+Templates reload automatically, so you only need to refresh the browser after editing a template. Restart after changing Python code.
+Please use practice targets you own or are allowed to test.
 
-Appen er bare Flask og kjører lokalt på `127.0.0.1:5000`, så du åpner den i nettleseren på samme maskin. Ingen nettside på GitHub trengs, og ingen skal legges ut offentlig.
+## License
 
-1. Legg **appkoden** i et eget *privat* GitHub-repo (ikke datamappen, ikke `.venv`, ikke `config.json`), og `git clone` det i Kali.
-2. `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-3. Klon **datarepoet** ditt (det som har oppgavefilene dine) til en mappe i Kali, og pek `CTF_DATA_DIR` dit. Skriv og push derfra, så følger Windows og Kali samme historikk (`git pull` før du begynner).
-4. Last ned PCAP-er rett i Kali, bare det du trenger: `git clone https://github.com/SackOfHacks/ICS-PCAP-Challenges` og `python3 scripts/fetch.py <datasett>` (trenger `p7zip-full`). Sett `CTF_DOWNLOADS_DIR` til `<repo>/data`.
-
-Under «Åpne oppgaven» på Oppvarming står hver fil med størrelse og en «Last ned»-lenke når filen finnes.
+MIT, see [LICENSE](LICENSE). Third-party notices are in [NOTICE.md](NOTICE.md).

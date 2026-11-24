@@ -7,7 +7,7 @@ from flask import Flask, Response, abort, jsonify, render_template, request, sen
 import markdown
 
 from labs import __main__ as labs_mod
-from . import config, constants, gitops, intro, videos, xp
+from . import config, constants, gitops, intro, recommend, videos, xp
 from .report import build_report, select_tasks
 from .stats import compute_stats
 from .storage import (
@@ -74,19 +74,26 @@ def create_app(data_dir: str | None = None) -> Flask:
         logged = {tag for t in tasks for tag in t["tags"] if tag.startswith("practice-")}
         dl = config.get_downloads_dir()
 
+        def ready(e):
+            return intro.readiness(intro.file_info(dl, e.get("files") or [])) in ("ready", "nofiles")
+
         def nxt(diff):
-            for e in PRACTICE.values():
-                if e["difficulty"] == diff and f"practice-{e['id']}" not in logged \
-                        and intro.readiness(intro.file_info(dl, e.get("files") or [])) in ("ready", "nofiles"):
-                    return e
-            return None
+            return next((e for e in PRACTICE.values()
+                         if e["difficulty"] == diff and f"practice-{e['id']}" not in logged and ready(e)), None)
+        done_ids = {t[len("practice-"):] for t in logged}
         missions = [{"kicker": "Start her", "title": "Oppvarming", "text": "Intro til kategoriene og to små oppgaver.",
                      "cta": "Start", "href": url_for("warmup_page")}]
-        for diff, label in (("easy", "Neste lette oppgave"), ("medium", "Neste middels oppgave")):
-            e = nxt(diff)
-            if e:
-                missions.append({"kicker": label, "title": e["title"], "text": C_CAT(e["category"]) + " · " + e["source"].split(" · ")[0],
-                                 "cta": "Åpne", "href": url_for("practice_page", diff=diff, cat=e["category"])})
+        rec = recommend.recommend(tasks, list(PRACTICE.values()), done_ids, ready)
+        if rec:
+            e, w = rec["entry"], rec["category"]
+            missions.append({"kicker": "Anbefalt for deg", "title": e["title"],
+                             "text": f"{w['label']}: {w['reason']}", "cta": "Åpne",
+                             "href": url_for("practice_page", diff=e["difficulty"], cat=e["category"])})
+        e = nxt("easy")
+        if e:
+            missions.append({"kicker": "Neste lette oppgave", "title": e["title"],
+                             "text": C_CAT(e["category"]) + " · " + e["source"].split(" · ")[0],
+                             "cta": "Åpne", "href": url_for("practice_page", diff="easy", cat=e["category"])})
         missions.append({"kicker": "Vane", "title": "Påminnelse", "text": "Få et varsel på telefonen når du skal trene.",
                          "cta": "Sett opp", "href": url_for("reminder_page")})
         return render_template("dashboard.html", intros=intro.INTROS, missions=missions)
