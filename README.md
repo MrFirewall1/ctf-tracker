@@ -10,10 +10,34 @@ see where you are weak, and get a nudge toward what to practice next.
 > The user interface is currently in **Norwegian** (the catalog texts also have an English/Norwegian toggle).
 > Translating the UI is a welcome contribution, see [CONTRIBUTING.md](CONTRIBUTING.md). Norwegian docs: [README.no.md](README.no.md).
 
+## Screenshots
+
+The first four images use **made-up demo data** (`tools/demo_data.py`), so you can see the app in use. The last three show a fresh install.
+
+| | |
+|---|---|
+| ![Dashboard with XP, streak, recommendation, activity map and skills](docs/screenshots/dashboard.jpg) | ![Dashboard statistics and task catalog status](docs/screenshots/dashboard-stats.jpg) |
+| **Dashboard**: level and XP, streak, "Recommended for you", activity map, skill radar | **Statistics**: solve rate, hints per task, catalog status |
+| ![Task catalog filtered to easy reversing tasks with an introduction](docs/screenshots/tasks.jpg) | ![Warm-up with an introduction to each category](docs/screenshots/warmup.jpg) |
+| **Tasks**: search and filters, category introduction, logged tasks marked | **Warm-up**: an intro to every category with two small tasks in each |
+| ![Warm-up tasks with start steps and a ready box](docs/screenshots/warmup-tasks.jpg) | ![List of logged tasks](docs/screenshots/my-logs.jpg) |
+| **Warm-up tasks**: "how to start" steps and a "you are ready" box | **My logs**: every task you have logged, with status and hints |
+| ![First run: empty dashboard](docs/screenshots/first-run-dashboard.png) | ![First run: task catalog](docs/screenshots/first-run-tasks.png) |
+| **First run**: nothing logged yet | **Catalog**: ~255 tasks with XP per task |
+| ![Git page](docs/screenshots/git-page.png) | |
+| **Git**: optional backup of your notes (push is manual) | |
+
+Try it yourself with demo data:
+
+```bash
+.venv/bin/python tools/demo_data.py /tmp/ctf-demo-data
+CTF_DATA_DIR=/tmp/ctf-demo-data ./run.sh
+```
+
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/ctf-tracker.git
+git clone https://github.com/MrFirewall1/ctf-tracker.git
 cd ctf-tracker
 ./setup.sh          # creates .venv, installs dependencies, makes ~/ctf-tracker-data
 ./run.sh            # starts the app and opens http://127.0.0.1:5000

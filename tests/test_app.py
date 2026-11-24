@@ -538,3 +538,18 @@ def test_recommendation_targets_weakest_area():
     assert r["category"]["key"] == "web" and r["entry"]["id"] == "b"
     assert recommend.recommend(tasks, entries, {"a", "b", "c"}) is None
     assert recommend.weak_categories([])[0]["reason"] == "ikke prøvd ennå"
+
+
+def test_demo_data_tool_fills_a_fresh_dir_and_refuses_reuse(tmp_path):
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location("demo_data", Path(__file__).parent.parent / "tools" / "demo_data.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    d = tmp_path / "demo"
+    assert mod.main([str(d)]) == 0
+    tasks, errors = list_tasks(d)
+    assert len(tasks) == len(mod.DEMO) and not errors and all("demo" in t["tags"] for t in tasks)
+    assert mod.main([str(d)]) == 1                      # nekter å fylle en mappe som allerede har oppgaver
+    from app.xp import compute_xp
+    assert compute_xp(tasks)["xp"] > 100
