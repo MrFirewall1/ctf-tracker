@@ -46,7 +46,7 @@ Datamappen på SSD-en er et eget git-repo (ikke selve appkoden).
 1. Opprett et **tomt, privat** repo på GitHub (uten README, ellers får du ulik historikk).
 2. Koble det til, én gang:
    ```bash
-   .venv/bin/python -m app git-init git@github.com:BRUKER/REPO.git
+   .venv/bin/python -m app git-init git@github.com:MrFirewall1/ctf-data.git
    ```
    Kommandoen kjører `git init`, setter remote `origin`, og committer `.gitignore`, markørfilen og `tasks/`. Den kan kjøres flere ganger. Hvis du ikke har satt `user.name`/`user.email` i git, settes en nøytral identitet (`CTF-tracker`) kun i dette repoet.
 3. Hver gang du lagrer en oppgave committes akkurat den filen: `Legg til oppgave: <tittel>` (ny) eller `Oppdater oppgave: <tittel>`. Mislykkes git, er oppgaven likevel lagret, og du får en melding i skjemaet.

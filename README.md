@@ -91,7 +91,7 @@ Edit `INTROS` in `app/intro.py` to change the category introductions, and `WARMU
 ## Optional: git backup of your notes
 
 ```bash
-.venv/bin/python -m app git-init git@github.com:<you>/ctf-data.git   # once, repo must be empty
+.venv/bin/python -m app git-init git@github.com:MrFirewall1/ctf-data.git   # once, repo must be empty
 ```
 
 Each logged task is committed. Pushing is manual (button on the **Git** page). Only ssh and https remotes are accepted.
