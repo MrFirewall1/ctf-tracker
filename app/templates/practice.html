@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Oppgaver · CTF-tracker{% endblock %}
+{% block content %}
+<div class="lib-head">
+  <h1>Oppgaver <span class="muted">({{ done }} / {{ entries|length }} logget)</span></h1>
+  <a class="btn primary" href="{{ url_for('warmup_page') }}">Oppvarming →</a>
+</div>
+<p class="muted">Lette, middels og vanskelige oppgaver. Ny her? Start med <a href="{{ url_for('warmup_page') }}">Oppvarming</a>. Trykk på et kort for å åpne oppgaven. Prøv først uten hint. Åpner du et hint, skriv det inn som brukt hint når du logger oppgaven.</p>
+
+<div class="lib-filters">
+  <label class="fld grow">Søk<input type="search" id="f-text" placeholder="Søk i oppgaver…"></label>
+  <label class="fld">Kategori<select id="f-cat"><option value="">Alle</option>{% for k, v in C.CATEGORIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+  <label class="fld">Vanskelighet<select id="f-diff"><option value="">Alle nivåer</option>{% for k, v in C.DIFFICULTIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+  <label class="fld">Kilde<select id="f-src"><option value="">Alle kilder</option>{% for s in sources %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></label>
+  <label class="fld">Protokoll<select id="f-proto"><option value="">Alle</option>{% for k, v in C.PROTOCOLS.items() if k %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+</div>
+<div class="lib-toggles">
+  <label class="sw"><input type="checkbox" id="f-open"><span></span> Skjul loggede</label>
+  <label class="sw"><input type="checkbox" id="f-ready"><span></span> Bare klare</label>
+  <button type="button" class="btn ghost" id="f-clear">Nullstill filtre</button>
+  <span class="muted" id="f-count"></span>
+  <span class="spacer-x"></span>
+  <span class="muted">Språk:</span>
+  <button type="button" class="langbtn" data-set="en">English</button>
+  <button type="button" class="langbtn" data-set="no">Norsk</button>
+</div>
+
+<section class="card intro" id="intro" hidden></section>
+<script type="application/json" id="intros-data">{{ intros|tojson }}</script>
+
+<details class="card">
+  <summary><strong>Hvordan åpner jeg en oppgave?</strong></summary>
+  <ol class="steps">{% for h in how_to_open %}<li>{{ h }}</li>{% endfor %}</ol>
+  {% if not downloads_dir %}<p class="muted">Vil du se full sti og «lastet ned»-status på kortene, start appen med
+  <code>export CTF_DOWNLOADS_DIR=/mnt/d/ctf-downloads/ICS-PCAP-data</code> (eller sett <code>downloads_dir</code> i config.json).</p>{% endif %}
+  <p class="muted">Egne øvelser med tilfeldige flagg lages slik (utenfor datamappen):</p>
+  <pre>.venv/bin/python -m labs generate ~/ctf-labs
+.venv/bin/python -m labs check ~/ctf-labs modbus-flag 'CTF{{ '{' }}...}'</pre>
+</details>
+
+<div class="grid three lib" id="lib" style="margin-top:14px">
+{% for e in entries %}
+  <article class="card lib-card" tabindex="0" data-ready="{{ e.ready }}" data-cat="{{ e.category }}" data-diff="{{ e.difficulty }}" data-proto="{{ e.protocol }}"
+           data-src="{{ e.source.split(' · ')[0] }}" data-done="{{ 1 if e.done else 0 }}" data-id="{{ e.id }}"
+           data-text="{{ (e.title ~ ' ' ~ e.no.title ~ ' ' ~ e.source ~ ' ' ~ e.tags|join(' '))|lower }}">
+    <div class="lib-top">
+      <h3 class="lib-title"><span class="t-en">{{ e.title }}</span><span class="t-no">{{ e.no.title }}</span></h3>
+      <span class="catpill">{{ C.CATEGORIES[e.category] }}</span>
+    </div>
+    <div class="lib-by">{{ e.source.split(' · ')[1:]|join(' · ') or e.source }}</div>
+    <div class="lib-diff d-{{ e.difficulty }}">
+      <span class="bars"><i></i><i></i><i></i></span><b>{{ C.DIFFICULTIES[e.difficulty] }}</b>
+    </div>
+    <div class="lib-foot">
+      <span>{{ e.source.split(' · ')[0] }}</span>
+      <span class="stat">
+        <span class="pill xp" title="XP hvis du løser den alene">+{{ xp_base[e.difficulty] }} XP</span>
+        {% if e.done %}<span class="pill solved_alone">logget</span>{% endif %}
+        {% if e.ready == 'ready' %}<span class="pill solved_hint" title="Alle filer er lastet ned">klar</span>
+        {% elif e.ready == 'partial' %}<span class="pill solved_solution" title="Noen filer mangler">delvis</span>
+        {% elif e.ready == 'missing' %}<span class="pill unsolved" title="Filene er ikke lastet ned">mangler filer</span>{% endif %}
+      </span>
+    </div>
+
+    <dialog class="detail">
+      <div class="thumb" aria-hidden="true"><svg viewBox="0 0 24 24">{{ icons[e.category]|safe }}</svg>{% if e.protocol and C.PROTOCOLS[e.protocol] %}<span class="thumb-tag">{{ C.PROTOCOLS[e.protocol] }}</span>{% endif %}</div>
+      <div class="lib-top"><h2><span class="t-en">{{ e.title }}</span><span class="t-no">{{ e.no.title }}</span></h2>
+        <button type="button" class="btn ghost close-dlg">Lukk ✕</button></div>
+      <p class="muted">{{ e.source }} · {{ C.CATEGORIES[e.category] }} · {{ C.DIFFICULTIES[e.difficulty] }}
+        · <button type="button" class="linkbtn card-lang">Oversett</button></p>
+      <p class="t-en" style="white-space:pre-line">{{ e.objective }}</p>
+      <p class="t-no" style="white-space:pre-line">{{ e.no.objective }}</p>
+      <p class="muted">XP: løst alene <b>+{{ xp_base[e.difficulty] }}</b> · med hint <b>+{{ (xp_base[e.difficulty] * xp_factor.solved_hint)|round|int }}</b> · med fasit <b>+{{ (xp_base[e.difficulty] * xp_factor.solved_solution)|round|int }}</b></p>
+      <div class="startbox"><strong>Slik starter du</strong>
+        <ol class="steps">{% for st in e.steps %}<li>{{ st }}</li>{% endfor %}</ol></div>
+      {% if e.data %}
+      <details>
+        <summary>Åpne oppgaven (filer)</summary>
+        <ul class="files">
+        {% for f in e.fileinfo %}
+          <li>{% if f.exists is true %}<span title="lastet ned">✓</span>{% elif f.exists is false %}<span title="ikke lastet ned ennå">✗</span>{% else %}•{% endif %}
+            <code>{{ f.win or f.wsl or f.rel }}</code>{% if f.size %} <span class="muted">({{ f.size }})</span>{% endif %}
+            {% if f.exists is true %}<a href="{{ url_for('download_file', rel=f.rel) }}">Last ned</a>{% endif %}
+            {% if f.wsl %}<br><span class="muted">WSL:</span> <code>tshark -r '{{ f.wsl }}' -q -z io,phs</code>{% endif %}</li>
+        {% endfor %}
+        </ul>
+        <p class="muted">Åpne filen i Wireshark: File → Open og lim inn stien. Mangler filen:
+        <code>python3 scripts/fetch.py {{ e.data }}</code> (kjøres i ~/ctf-downloads/ICS-PCAP-Challenges).</p>
+      </details>
+      {% endif %}
+      {% if e.url %}<p><a href="{{ e.url }}" target="_blank" rel="noopener noreferrer">Åpne oppgaven på nettet ↗</a> <span class="muted">(krever nett)</span></p>{% endif %}
+      <details>
+        <summary>Hint ({{ e.hints|length }})</summary>
+        <ol class="t-en">{% for h in e.hints %}<li>{{ h }}</li>{% endfor %}</ol>
+        <ol class="t-no">{% for h in e.no.hints %}<li>{{ h }}</li>{% endfor %}</ol>
+      </details>
+      {% if e.id.startswith('lab-') %}
+      <form class="answer" data-id="{{ e.id }}" autocomplete="off">
+        <label>Ditt svar (flagget)<input type="text" name="answer" placeholder="CTF{...}" maxlength="300" spellcheck="false"></label>
+        <button class="primary" type="submit">Sjekk svar</button>
+        <span class="answer-msg" role="status"></span>
+      </form>
+      {% else %}
+      <p class="muted">Svaret sjekkes på oppgavens egen side. Jeg har ikke fasit på disse, og legger heller ikke inn løsninger.</p>
+      {% endif %}
+      <p><a class="primary-link log-link" href="{{ url_for('new_task', practice=e.id) }}">Logg denne →</a></p>
+    </dialog>
+  </article>
+{% endfor %}
+</div>
+<p id="lib-empty" class="muted" hidden>Ingen oppgaver passer filtrene.</p>
+<nav class="pager" id="pager" aria-label="Sider"></nav>
+
+<style>
+  .grid[data-lang="en"] .card:not([data-over="no"]) .t-no, .grid[data-lang="en"] .card[data-over="no"] .t-en,
+  .grid[data-lang="no"] .card:not([data-over="en"]) .t-en, .grid[data-lang="no"] .card[data-over="en"] .t-no { display: none; }
+</style>
+<script>
+(function () {
+  var PAGE = 12, page = 1;
+  var grid = document.getElementById("lib"), cards = Array.prototype.slice.call(grid.querySelectorAll(".lib-card"));
+  var cat = document.getElementById("f-cat"), INTROS = JSON.parse(document.getElementById("intros-data").textContent),
+      intro = document.getElementById("intro");
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
+  function renderIntro() {
+    var i = INTROS[cat.value];
+    if (!i) { intro.hidden = true; intro.innerHTML = ""; return; }
+    intro.hidden = false;
+    intro.innerHTML = "<h2>" + esc(i.title) + "</h2><p>" + esc(i.summary) + "</p><h3>Nøkkelbegreper</h3><dl>" +
+      i.terms.map(function (t) { return "<dt>" + esc(t[0]) + "</dt><dd>" + esc(t[1]) + "</dd>"; }).join("") +
+      "</dl><h3>Slik kommer du i gang</h3><ol>" + i.start.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+      '</ol><p class="muted">Verktøy: ' + esc(i.tools) + "</p>";
+  }
+  var q = document.getElementById("f-text"), d = document.getElementById("f-diff"), p = document.getElementById("f-proto"),
+      sr = document.getElementById("f-src"), o = document.getElementById("f-open"), rd = document.getElementById("f-ready"),
+      n = document.getElementById("f-count"), pager = document.getElementById("pager"), empty = document.getElementById("lib-empty");
+  function curLang(c) { return c.dataset.over || grid.dataset.lang; }
+  function setLinks() {
+    cards.forEach(function (c) {
+      var a = c.querySelector(".log-link"), base = a.getAttribute("href").split("&lang=")[0];
+      a.setAttribute("href", base + "&lang=" + curLang(c));
+    });
+  }
+  function setLang(l) {
+    grid.dataset.lang = l;
+    cards.forEach(function (c) { delete c.dataset.over; });
+    document.querySelectorAll(".langbtn").forEach(function (b) { b.classList.toggle("active", b.dataset.set === l); });
+    try { localStorage.setItem("ctf-lang", l); } catch (e) {}
+    setLinks();
+  }
+  document.querySelectorAll(".langbtn").forEach(function (b) { b.addEventListener("click", function () { setLang(b.dataset.set); }); });
+  cards.forEach(function (c) {
+    var dlg = c.querySelector("dialog");
+    c.addEventListener("click", function (e) { if (!e.target.closest("dialog")) dlg.showModal(); });
+    c.addEventListener("keydown", function (e) { if ((e.key === "Enter" || e.key === " ") && e.target === c) { e.preventDefault(); dlg.showModal(); } });
+    dlg.addEventListener("click", function (e) { if (e.target === dlg) dlg.close(); });   // klikk utenfor lukker
+    c.querySelector(".close-dlg").addEventListener("click", function () { dlg.close(); });
+    c.querySelector(".card-lang").addEventListener("click", function () {
+      c.dataset.over = curLang(c) === "en" ? "no" : "en"; setLinks();
+    });
+  });
+  document.querySelectorAll("form.answer").forEach(function (f) {
+    f.addEventListener("click", function (e) { e.stopPropagation(); });
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var msg = f.querySelector(".answer-msg"), inp = f.querySelector("input");
+      msg.className = "answer-msg"; msg.textContent = "Sjekker…";
+      fetch("/api/check", {method: "POST", headers: {"Content-Type": "application/json"},
+                           body: JSON.stringify({id: f.dataset.id, answer: inp.value})})
+        .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+        .then(function (res) {
+          var ok = res[0], j = res[1];
+          if (!ok) { msg.className = "answer-msg bad"; msg.textContent = j.error || "Noe gikk galt."; return; }
+          msg.className = "answer-msg " + (j.correct ? "good" : "bad");
+          msg.textContent = j.correct ? "Riktig! +" + j.xp + " XP hvis du løste den alene. Trykk «Logg denne» under." : "Feil, prøv igjen.";
+        })
+        .catch(function () { msg.className = "answer-msg bad"; msg.textContent = "Fikk ikke kontakt med appen."; });
+    });
+  });
+  function matches(c) {
+    var t = q.value.trim().toLowerCase();
+    return (!t || c.dataset.text.indexOf(t) >= 0) && (!cat.value || c.dataset.cat === cat.value) && (!d.value || c.dataset.diff === d.value) &&
+           (!p.value || c.dataset.proto === p.value) && (!sr.value || c.dataset.src === sr.value) &&
+           !(o.checked && c.dataset.done === "1") &&
+           !(rd.checked && c.dataset.ready !== "ready" && c.dataset.ready !== "nofiles");
+  }
+  function renderPager(pages) {
+    pager.innerHTML = "";
+    if (pages <= 1) return;
+    function btn(label, target, cls, disabled) {
+      var b = document.createElement("button"); b.type = "button"; b.textContent = label; b.className = cls || "";
+      b.disabled = !!disabled; b.addEventListener("click", function () { page = target; apply(true); window.scrollTo(0, 0); });
+      pager.appendChild(b);
+    }
+    btn("‹ Forrige", page - 1, "", page === 1);
+    var shown = {1: 1, 2: 1};
+    shown[pages] = 1; shown[pages - 1] = 1; shown[page] = 1; shown[page - 1] = 1; shown[page + 1] = 1;
+    var last = 0;
+    for (var i = 1; i <= pages; i++) {
+      if (!shown[i]) continue;
+      if (i - last > 1) { var s = document.createElement("span"); s.textContent = "…"; pager.appendChild(s); }
+      btn(String(i), i, i === page ? "on" : "", false); last = i;
+    }
+    btn("Neste ›", page + 1, "", page === pages);
+  }
+  function apply(keepPage) {
+    if (!keepPage) page = 1;
+    var hit = cards.filter(matches), pages = Math.max(1, Math.ceil(hit.length / PAGE));
+    page = Math.min(page, pages);
+    var from = (page - 1) * PAGE, vis = hit.slice(from, from + PAGE);
+    cards.forEach(function (c) { c.style.display = vis.indexOf(c) >= 0 ? "" : "none"; });
+    n.textContent = hit.length + " oppgaver";
+    empty.hidden = hit.length > 0;
+    renderPager(pages);
+  }
+  [cat, d, p, sr, o, rd].forEach(function (el) { el.addEventListener("change", function () { apply(); }); });
+  q.addEventListener("input", function () { apply(); });
+  cat.addEventListener("change", renderIntro);
+  document.getElementById("f-clear").addEventListener("click", function () {
+    q.value = ""; cat.value = d.value = p.value = sr.value = ""; o.checked = rd.checked = false; renderIntro(); apply();
+  });
+  var saved = "en";
+  try { saved = localStorage.getItem("ctf-lang") || "en"; } catch (e) {}
+  setLang(saved === "no" ? "no" : "en");
+  var qs = new URLSearchParams(location.search);
+  if (qs.get("cat")) cat.value = qs.get("cat");
+  if (qs.get("diff")) d.value = qs.get("diff");
+  if (qs.get("proto")) p.value = qs.get("proto");
+  renderIntro();
+  apply();
+})();
+</script>
+{% endblock %}

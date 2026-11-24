@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Oppvarming · CTF-tracker{% endblock %}
+{% block content %}
+<div class="hero">
+  <div class="eyebrow">Start her</div>
+  <h1>Oppvarming</h1>
+  <p>Først en kort intro til hver kategori, så to små oppgaver i den kategorien. Når du har gjort begge, er du klar for de lette oppgavene i samme kategori.</p>
+  <div class="row">
+    {% for g in groups %}<a class="btn ghost" href="#kat-{{ g.key }}">{{ g.info.title.split(' (')[0] }} <span class="muted">{{ g.done }}/{{ g.total }}</span></a>{% endfor %}
+  </div>
+</div>
+
+<div class="eyebrow">Steg 1</div>
+<h2>Kjenn kategoriene</h2>
+<p class="muted">Trykk på en kategori for nøkkelbegreper og hvordan du kommer i gang.</p>
+<div class="grid three">
+{% for g in groups %}
+  <section class="card">
+    <div class="cat-head">
+      <span class="cat-icon"><svg viewBox="0 0 24 24">{{ icons[g.key]|safe }}</svg></span>
+      <h2>{{ g.info.title }}</h2>
+    </div>
+    <p>{{ g.info.summary }}</p>
+    <details>
+      <summary>Nøkkelbegreper ({{ g.info.terms|length }})</summary>
+      <div class="intro"><dl class="stack">{% for t in g.info.terms %}<dt>{{ t[0] }}</dt><dd>{{ t[1] }}</dd>{% endfor %}</dl></div>
+    </details>
+    <details>
+      <summary>Slik kommer du i gang</summary>
+      <ol class="steps">{% for x in g.info.start %}<li>{{ x }}</li>{% endfor %}</ol>
+      <p class="muted">Verktøy: {{ g.info.tools }}</p>
+    </details>
+    <p><a href="#kat-{{ g.key }}">Til de to oppgavene →</a></p>
+  </section>
+{% endfor %}
+</div>
+
+<div class="eyebrow" style="margin-top:28px">Steg 2</div>
+<h2>To oppgaver i hver kategori</h2>
+<p class="muted">Flaggene i de egne øvelsene lages tilfeldig på din maskin, og du kan sjekke svaret rett her. Logg oppgaven når du er ferdig.</p>
+
+{% for g in groups %}
+<section class="warm-group" id="kat-{{ g.key }}">
+  <div class="warm-head">
+    <span class="cat-icon"><svg viewBox="0 0 24 24">{{ icons[g.key]|safe }}</svg></span>
+    <h2>{{ g.info.title }}</h2>
+    <span class="spacer-x"></span>
+    <span class="pill {{ 'solved_alone' if g.done == g.total else '' }}">{{ g.done }} / {{ g.total }} gjort</span>
+  </div>
+  <div class="progress"><span style="width: {{ (100 * g.done / g.total)|round|int if g.total else 0 }}%"></span></div>
+  <div class="vid-box">
+    <h3>Video</h3>
+    {% if g.videos %}
+    <div class="vids">
+    {% for v in g.videos %}
+      <figure class="vid" data-id="{{ v.id }}">
+        <button type="button" class="vid-play" aria-label="Spill av {{ v.title }}">
+          <span class="vid-ico">▶</span><span>Spill av</span></button>
+        <figcaption><strong>{{ v.title }}</strong>{% if v.minutes %} <span class="pill">{{ v.minutes }} min</span>{% else %} <span class="pill unsolved" title="Sjekk lengden på YouTube. Maks 30 minutter.">lengde ikke sjekket</span>{% endif %}
+          <a href="https://www.youtube.com/watch?v={{ v.id }}" target="_blank" rel="noopener noreferrer">YouTube ↗</a>
+          <button type="button" class="linkbtn vid-del" data-cat="{{ g.key }}" data-id="{{ v.id }}">fjern</button></figcaption>
+      </figure>
+    {% endfor %}
+    </div>
+    {% else %}<p class="muted">Ingen videoer her ennå. Lim inn en YouTube-lenke og lengden under (maks 30 minutter).</p>{% endif %}
+    <form class="vid-add" data-cat="{{ g.key }}" autocomplete="off">
+      <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…" required>
+      <input type="text" name="title" placeholder="Tittel (valgfritt)" maxlength="120">
+      <input type="number" name="minutes" min="1" max="30" step="1" placeholder="Minutter (maks 30)" required style="width:170px">
+      <button class="btn ghost" type="submit">Legg til video</button>
+      <span class="vid-msg muted" role="status"></span>
+    </form>
+  </div>
+  <div class="grid" style="margin-top:12px">
+  {% for e in g.tasks %}
+    <section class="card">
+      <div class="thumb" aria-hidden="true"><svg viewBox="0 0 24 24">{{ icons[e.category]|safe }}</svg>{% if e.protocol and C.PROTOCOLS[e.protocol] %}<span class="thumb-tag">{{ C.PROTOCOLS[e.protocol] }}</span>{% endif %}</div>
+      <h2>{{ e.title }} {% if e.done %}<span class="pill solved_alone">logget</span>{% endif %}</h2>
+      <p class="muted">{{ e.source.split(' · ')[0] }} ·
+        <span class="diff"><i class="on"></i><i class="{{ 'on' if e.difficulty != 'easy' }}"></i><i class="{{ 'on' if e.difficulty == 'hard' }}"></i></span>
+        {{ C.DIFFICULTIES[e.difficulty] }} · <span class="pill xp">+{{ xp_base[e.difficulty] }} XP</span></p>
+      <p style="white-space:pre-line">{{ e.objective }}</p>
+      <div class="startbox"><strong>Slik starter du</strong>
+        <ol class="steps">{% for s in e.steps %}<li>{{ s }}</li>{% endfor %}</ol></div>
+      {% if e.url %}<p><a href="{{ e.url }}" target="_blank" rel="noopener noreferrer">Åpne oppgaven på nettet ↗</a> <span class="muted">(krever nett)</span></p>{% endif %}
+      <details><summary>Hint ({{ e.hints|length }})</summary><ol>{% for h in e.hints %}<li>{{ h }}</li>{% endfor %}</ol></details>
+      {% if e.id.startswith('lab-') %}
+      <form class="answer" data-id="{{ e.id }}" autocomplete="off">
+        <label>Ditt svar (flagget)<input type="text" name="answer" placeholder="CTF{...}" maxlength="300" spellcheck="false"></label>
+        <button class="primary" type="submit">Sjekk svar</button>
+        <span class="answer-msg" role="status"></span>
+      </form>
+      {% endif %}
+      <p><a class="primary-link" href="{{ url_for('new_task', practice=e.id) }}">Logg denne →</a></p>
+    </section>
+  {% endfor %}
+  </div>
+  <div class="card ready-box {{ 'ready' if g.done == g.total else '' }}">
+    {% if g.done == g.total %}
+      <strong>Du er klar!</strong> Begge oppgavene er logget. Fortsett med de lette oppgavene i {{ g.info.title.split(' (')[0] }}.
+    {% else %}
+      Gjør begge oppgavene ({{ g.total - g.done }} igjen), så åpnes veien til de lette oppgavene i {{ g.info.title.split(' (')[0] }}.
+    {% endif %}
+    <a class="{{ 'primary-link' if g.done == g.total else 'btn ghost' }}" href="{{ url_for('practice_page') }}?cat={{ g.key }}&diff=easy">Lette oppgaver →</a>
+  </div>
+</section>
+{% endfor %}
+
+<p class="muted" style="margin-top:24px">Video: nettleseren kobler ikke til YouTube før du trykker «Spill av». Da åpnes videoen i stor visning via youtube-nocookie.com. Resten av appen gjør ingen nettkall.</p>
+<script>
+var modal = document.createElement("dialog");
+modal.className = "vid-modal";
+modal.innerHTML = '<div class="vid-modal-bar"><strong></strong><span><a target="_blank" rel="noopener noreferrer">Åpne på YouTube ↗</a> ' +
+                  '<button type="button" class="btn ghost">Lukk ✕</button></span></div><div class="vid-frame"></div>';
+document.body.appendChild(modal);
+var mFrame = modal.querySelector(".vid-frame");
+function closeVid() { mFrame.innerHTML = ""; if (modal.open) modal.close(); }   // tømmer spilleren så lyden stopper
+modal.querySelector("button").addEventListener("click", closeVid);
+modal.addEventListener("click", function (e) { if (e.target === modal) closeVid(); });
+modal.addEventListener("close", function () { mFrame.innerHTML = ""; });
+document.querySelectorAll(".vid-play").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var fig = b.closest(".vid"), id = fig.dataset.id, f = document.createElement("iframe");
+    // YouTube krever avsender (ellers feil 153), så vi sender bare opprinnelsen, ikke hele adressen.
+    f.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?rel=0&autoplay=1&origin=" + encodeURIComponent(location.origin);
+    f.title = fig.querySelector("strong").textContent; f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen"; f.allowFullscreen = true;
+    f.referrerPolicy = "strict-origin-when-cross-origin";
+    mFrame.innerHTML = ""; mFrame.appendChild(f);
+    modal.querySelector("strong").textContent = f.title;
+    modal.querySelector("a").href = "https://www.youtube.com/watch?v=" + encodeURIComponent(id);
+    modal.showModal();
+  });
+});
+function postJson(url, body) {
+  return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+    .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); });
+}
+document.querySelectorAll(".vid-del").forEach(function (b) {
+  b.addEventListener("click", function () {
+    postJson("/api/videos/remove", {category: b.dataset.cat, id: b.dataset.id}).then(function () { location.reload(); });
+  });
+});
+document.querySelectorAll("form.vid-add").forEach(function (f) {
+  f.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = f.querySelector(".vid-msg");
+    postJson("/api/videos", {category: f.dataset.cat, url: f.url.value, title: f.title.value, minutes: f.minutes.value}).then(function (r) {
+      if (r[0]) { location.reload(); } else { msg.textContent = r[1].error || "Noe gikk galt."; }
+    }).catch(function () { msg.textContent = "Fikk ikke kontakt med appen."; });
+  });
+});
+document.querySelectorAll("form.answer").forEach(function (f) {
+  f.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = f.querySelector(".answer-msg"), inp = f.querySelector("input");
+    msg.className = "answer-msg"; msg.textContent = "Sjekker…";
+    fetch("/api/check", {method: "POST", headers: {"Content-Type": "application/json"},
+                         body: JSON.stringify({id: f.dataset.id, answer: inp.value})})
+      .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+      .then(function (res) {
+        var ok = res[0], j = res[1];
+        if (!ok) { msg.className = "answer-msg bad"; msg.textContent = j.error || "Noe gikk galt."; return; }
+        msg.className = "answer-msg " + (j.correct ? "good" : "bad");
+        msg.textContent = j.correct ? "Riktig! Husk å logge oppgaven under." : "Feil, prøv igjen.";
+      })
+      .catch(function () { msg.className = "answer-msg bad"; msg.textContent = "Fikk ikke kontakt med appen."; });
+  });
+});
+</script>
+{% endblock %}

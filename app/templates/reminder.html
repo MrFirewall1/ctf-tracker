@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Påminnelse · CTF-tracker{% endblock %}
+{% block content %}
+<h1>Påminnelse på telefonen</h1>
+<p>Appen kan ikke sende varsler selv (den er bevisst offline, uten nett og uten eksterne tjenester). I stedet lager den en kalenderfil som du legger inn i telefonens kalender. Da varsler telefonen deg som vanlig.</p>
+<form class="card" action="{{ url_for('reminder_ics') }}" method="get">
+  <div class="form-grid">
+    <label>Klokkeslett <input type="time" name="time" value="19:00" required></label>
+    <label>Tekst på varselet <input type="text" name="text" maxlength="80" value="Tid for CTF-trening"></label>
+    <div class="span2"><span class="muted">Dager</span><br>
+      {% for code, name in days %}<label class="check" style="display:inline-flex;margin-right:12px"><input type="checkbox" name="day" value="{{ code }}" checked> {{ name }}</label>{% endfor %}
+    </div>
+  </div>
+  <button class="primary" type="submit">Last ned kalenderfil (.ics)</button>
+</form>
+<div class="card" style="margin-top:16px">
+  <h2>Slik får du den på telefonen</h2>
+  <ol class="steps">
+    <li>Last ned filen her på PC-en.</li>
+    <li>Send den til deg selv (e-post, USB eller en delt mappe) og åpne den på telefonen.</li>
+    <li><strong>iPhone:</strong> åpne filen og velg «Legg til alle». <strong>Android:</strong> åpne den i Google Kalender (eller importer på kalender.google.com → Innstillinger → Importer).</li>
+    <li>Sjekk at varsler er slått på for kalenderen. Hendelsen gjentas hver uke på dagene du valgte.</li>
+  </ol>
+  <p class="muted">Vil du endre tid senere, slett hendelsen i kalenderen og last ned en ny fil.</p>
+</div>
+{% endblock %}

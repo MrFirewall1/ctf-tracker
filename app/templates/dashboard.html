@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · CTF-tracker{% endblock %}
+{% block content %}
+<section class="hero" id="xp-hero">
+  <div class="eyebrow">Din fremgang</div>
+  <h1 id="xp-level">…</h1>
+  <p><span class="tile" style="display:inline-block;border:0;background:none;padding:0"><span class="v" id="xp-total">0</span></span> XP
+     <span class="muted" id="xp-next"></span></p>
+  <div class="progress"><span id="xp-bar" style="width:0%"></span></div>
+  <div class="row" style="color:var(--muted)">
+    <span><strong id="xp-streak" style="color:#fff">0</strong> dager på rad</span>
+    <span><strong id="xp-week" style="color:#fff">0</strong> XP denne uken</span>
+    <span><strong id="xp-days" style="color:#fff">0</strong> aktive dager siste år</span>
+  </div>
+</section>
+<h2>Neste oppdrag</h2>
+<div class="missions">
+{% for m in missions %}
+  <a class="card mission" href="{{ m.href }}">
+    <span class="eyebrow">{{ m.kicker }}</span>
+    <strong>{{ m.title }}</strong>
+    <span class="muted">{{ m.text }}</span>
+    <span class="mission-cta">{{ m.cta }} →</span>
+  </a>
+{% endfor %}
+</div>
+<div class="grid" style="margin-top:16px">
+  <section class="card wide"><h2>Siste 12 måneder</h2><div id="heatmap" class="heatmap"></div>
+    <p class="muted">Hver rute er en dag. Lysere rød = flere logg-oppgaver den dagen.</p></section>
+  <section class="card"><h2>Ferdigheter</h2><div class="chart"><canvas id="c-skills"></canvas></div></section>
+  <section class="card"><h2>XP per oppgave</h2>
+    <p class="muted">Lett 10, middels 25, vanskelig 50. Løst alene gir full pott, med hint 70 %, med fasit 20 %.</p>
+    <p><a class="btn ghost" href="{{ url_for('reminder_page') }}">Sett opp påminnelse på telefonen →</a></p></section>
+</div>
+<h2 style="margin-top:24px">Detaljer</h2>
+<p class="filters">
+  Kategori:
+  <select id="f-category"><option value="">Alle</option>{% for k, v in C.CATEGORIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  Vanskelighet:
+  <select id="f-difficulty"><option value="">Alle</option>{% for k, v in C.DIFFICULTIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  Protokoll:
+  <select id="f-protocol"><option value="">Alle</option>{% for k, v in C.PROTOCOLS.items() if k %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+</p>
+<section class="card intro" id="intro" hidden></section>
+<script type="application/json" id="intros-data">{{ intros|tojson }}</script>
+<div id="load-error" class="banner error" hidden></div>
+<div id="parse-errors" class="banner warn" hidden></div>
+
+<section class="tiles" id="tiles"></section>
+
+<section class="card" id="catalog">
+  <h2>Oppgavekatalog (Oppvarming)</h2>
+  <div id="catalog-body"><p class="muted">Henter…</p></div>
+</section>
+
+<div class="grid">
+  <section class="card wide">
+    <h2>Løste oppgaver per uke</h2>
+    <div class="chart"><canvas id="c-solved"></canvas></div>
+  </section>
+  <section class="card">
+    <h2>Løsningsrate per kategori</h2>
+    <div class="chart"><canvas id="c-cat"></canvas></div>
+  </section>
+  <section class="card">
+    <h2>Løsningsrate per protokoll</h2>
+    <div class="chart"><canvas id="c-proto"></canvas></div>
+  </section>
+  <section class="card wide">
+    <h2>Hint-trend: gjennomsnittlig antall hint per oppgave, per uke</h2>
+    <div class="chart"><canvas id="c-hints"></canvas></div>
+  </section>
+  <section class="card">
+    <h2>Løst alene / hint / fasit</h2>
+    <div class="chart"><canvas id="c-status"></canvas></div>
+  </section>
+  <section class="card">
+    <h2>Treningsdager per uke</h2>
+    <div class="chart"><canvas id="c-sessions"></canvas></div>
+  </section>
+  <section class="card">
+    <h2>Svakeste områder</h2>
+    <div id="weakest"></div>
+  </section>
+  <section class="card">
+    <h2>Bør løses på nytt</h2>
+    <div id="revisit"></div>
+  </section>
+</div>
+<p class="muted">«Løst» = løst alene eller med hint. Løst med fasit teller som ikke løst. Treningsdag = dag med minst én logget oppgave. Svakeste områder krever minst 2 oppgaver i gruppen.</p>
+
+<script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}

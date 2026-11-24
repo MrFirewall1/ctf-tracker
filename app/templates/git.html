@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Git · CTF-tracker{% endblock %}
+{% block content %}
+<h1>Git</h1>
+<p>Hver lagring committes automatisk. Push skjer bare når du trykker på knappen under.</p>
+<div id="info" class="card">Henter status…</div>
+<div class="actions">
+  <button id="push" class="primary" disabled>Push til GitHub</button>
+  <button id="refresh" type="button">Oppdater status</button>
+</div>
+<pre id="out" hidden></pre>
+
+<script>
+(function () {
+  const info = document.getElementById('info'), out = document.getElementById('out');
+  const push = document.getElementById('push');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+  async function load() {
+    const r = await fetch('/api/git/status');
+    const s = await r.json();
+    if (!r.ok) { info.innerHTML = '<strong>' + esc(s.error) + '</strong>'; push.disabled = true; return; }
+    if (!s.repo) {
+      info.innerHTML = 'Datamappen er ikke et git-repo ennå. Kjør i terminalen:<pre>.venv/bin/python -m app git-init git@github.com:BRUKER/REPO.git</pre>';
+      push.disabled = true; return;
+    }
+    info.innerHTML =
+      `<p>Gren: <code>${esc(s.branch)}</code> · Remote: <code>${esc(s.remote || 'ikke satt')}</code></p>` +
+      `<p>Upushede commits: <strong>${s.ahead}</strong> · Ucommittede endringer: <strong>${s.dirty}</strong></p>` +
+      (s.log.length ? '<p>Siste commits:</p><ul>' + s.log.map(l => `<li><code>${esc(l)}</code></li>`).join('') + '</ul>' : '') +
+      (s.error ? `<p class="muted">${esc(s.error)}</p>` : '');
+    push.disabled = !s.remote;
+  }
+
+  push.addEventListener('click', async () => {
+    push.disabled = true; out.hidden = false; out.textContent = 'Pusher…';
+    try {
+      const r = await fetch('/api/git/push', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+      const d = await r.json();
+      out.textContent = r.ok ? d.output : 'FEIL:\n' + d.error;
+    } catch (e) { out.textContent = 'FEIL: ' + e.message; }
+    await load();
+  });
+  document.getElementById('refresh').addEventListener('click', load);
+  load();
+})();
+</script>
+{% endblock %}

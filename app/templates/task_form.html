@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ task.title if task else 'Ny oppgave' }} · CTF-tracker{% endblock %}
+{% block content %}
+{% set t = task or prefill or {} %}
+<h1>{{ 'Rediger oppgave' if task else 'Ny oppgave' }}</h1>
+
+<form id="task-form" data-id="{{ t.id or '' }}">
+  <div class="form-grid">
+    <label class="span2">Tittel
+      <input name="title" required value="{{ t.title or '' }}"></label>
+    <label>Dato
+      <input type="date" name="date" required value="{{ t.date or '' }}"></label>
+    <label>Kilde / plattform
+      <input name="source" list="sources" placeholder="ICS-PCAP-Challenges, picoCTF, Hack The Box…" value="{{ t.source or '' }}">
+      <datalist id="sources">{% for s in sources %}<option value="{{ s }}">{% endfor %}</datalist></label>
+    <label>Kategori
+      <select name="category">{% for k, v in C.CATEGORIES.items() %}
+        <option value="{{ k }}" {{ 'selected' if t.category == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label>Protokoll
+      <select name="protocol">{% for k, v in C.PROTOCOLS.items() %}
+        <option value="{{ k }}" {{ 'selected' if t.protocol == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label>Vanskelighetsgrad
+      <select name="difficulty">{% for k, v in C.DIFFICULTIES.items() %}
+        <option value="{{ k }}" {{ 'selected' if (t.difficulty or 'medium') == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label>Tid brukt (minutter, valgfritt)
+      <input type="number" min="0" name="time_minutes" value="{{ t.time_minutes or 0 }}"></label>
+    <label>Status
+      <select name="status">{% for k, v in C.STATUSES.items() %}
+        <option value="{{ k }}" {{ 'selected' if t.status == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label>Antall hint brukt
+      <input type="number" min="0" name="hints_used" value="{{ t.hints_used or 0 }}"></label>
+    <label class="check span2">
+      <input type="checkbox" name="resolved_later" {{ 'checked' if t.resolved_later }}>
+      Løst på nytt senere uten hjelp</label>
+    <label class="span2">Verktøy (kommaseparert)
+      <input name="tools" placeholder="wireshark, tshark, scapy" value="{{ (t.tools or [])|join(', ') }}"></label>
+    <label class="span2">Tags (kommaseparert)
+      <input name="tags" placeholder="function-code, coils, replay" value="{{ (t.tags or [])|join(', ') }}"></label>
+  </div>
+
+  <div class="editor-head">
+    <h2>Forklaring (markdown)</h2>
+    <div class="tabs">
+      <button type="button" id="tab-edit" class="active">Skriv</button>
+      <button type="button" id="tab-preview">Forhåndsvis</button>
+    </div>
+  </div>
+  <textarea name="body" id="body" rows="22" spellcheck="true">{{ t.body if (task or prefill) else C.BODY_TEMPLATE }}</textarea>
+  <div id="preview" class="preview" hidden></div>
+  <p class="muted">Ikke skriv inn passord, interne firmaopplysninger eller ekte nettverksdata. Forklaringene havner i et git-repo.</p>
+
+  <div class="actions">
+    <button type="submit" class="primary">Lagre</button>
+    <span id="msg" role="status"></span>
+  </div>
+</form>
+<script src="{{ url_for('static', filename='form.js') }}"></script>
+{% endblock %}

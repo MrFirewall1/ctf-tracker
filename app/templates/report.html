@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Rapport · CTF-tracker{% endblock %}
+{% block content %}
+<h1>PDF-rapport</h1>
+<p>Velg periode og/eller enkeltoppgaver. Uten valgte oppgaver tas alle i perioden med. Rapporten bruker bare det du selv har skrevet. En kopi lagres i <code>reports/</code> på SSD-en (holdes utenfor git).</p>
+
+<form method="get" action="{{ url_for('report_pdf') }}" target="_blank">
+  <div class="form-grid">
+    <label>Fra dato <input type="date" name="from"></label>
+    <label>Til dato <input type="date" name="to"></label>
+  </div>
+  <h2>Oppgaver (valgfritt)</h2>
+  <p><label><input type="checkbox" id="all" style="width:auto"> Velg alle</label></p>
+  <table>
+    <tbody>
+    {% for t in tasks %}
+      <tr>
+        <td style="width:30px"><input type="checkbox" name="id" value="{{ t.id }}" style="width:auto"></td>
+        <td>{{ t.date }}</td><td>{{ t.title }}</td><td>{{ C.STATUSES[t.status] }}</td>
+      </tr>
+    {% else %}
+      <tr><td class="muted">Ingen oppgaver ennå.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="actions"><button type="submit" class="primary">Lag PDF</button></div>
+</form>
+<script>
+document.getElementById('all').addEventListener('change', e =>
+  document.querySelectorAll('input[name=id]').forEach(c => c.checked = e.target.checked));
+</script>
+{% endblock %}

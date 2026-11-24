@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Oppgaver · CTF-tracker{% endblock %}
+{% block content %}
+<h1>Oppgaver <span class="muted">({{ tasks|length }})</span></h1>
+{% if errors %}
+<div class="banner warn">
+  <strong>{{ errors|length }} fil(er) kunne ikke leses og er hoppet over:</strong>
+  <ul>{% for e in errors %}<li><code>{{ e.file }}</code>: {{ e.error }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="filters">
+  <input id="f-text" type="search" placeholder="Søk i tittel, kilde, tags…">
+  <select id="f-category"><option value="">Alle kategorier</option>
+    {% for k, v in C.CATEGORIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  <select id="f-difficulty"><option value="">Alle nivåer</option>
+    {% for k, v in C.DIFFICULTIES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  <select id="f-protocol"><option value="">Alle protokoller</option>
+    {% for k, v in C.PROTOCOLS.items() if k %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  <select id="f-status"><option value="">Alle statuser</option>
+    {% for k, v in C.STATUSES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+</div>
+
+<table id="tasks">
+  <thead><tr>
+    <th>Dato</th><th>Tittel</th><th>Kilde</th><th>Kategori</th><th>Protokoll</th>
+    <th>Nivå</th><th>Min</th><th>Hint</th><th>Status</th>
+  </tr></thead>
+  <tbody>
+  {% for t in tasks %}
+    <tr data-category="{{ t.category }}" data-status="{{ t.status }}" data-difficulty="{{ t.difficulty }}" data-protocol="{{ t.protocol }}"
+        data-text="{{ (t.title ~ ' ' ~ t.source ~ ' ' ~ t.tags|join(' '))|lower }}">
+      <td>{{ t.date }}</td>
+      <td><a href="{{ url_for('edit_task', task_id=t.id) }}">{{ t.title }}</a></td>
+      <td>{{ t.source }}</td>
+      <td>{{ C.CATEGORIES[t.category] }}</td>
+      <td>{{ C.PROTOCOLS[t.protocol] if t.protocol else '–' }}</td>
+      <td>{{ C.DIFFICULTIES[t.difficulty] }}</td>
+      <td>{{ t.time_minutes }}</td>
+      <td>{{ t.hints_used }}</td>
+      <td><span class="pill {{ t.status }}">{{ C.STATUSES[t.status] }}</span>{% if t.resolved_later %} <span title="Løst på nytt uten hjelp">↻</span>{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">Ingen oppgaver ennå.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<script>
+(function () {
+  const rows = [...document.querySelectorAll('#tasks tbody tr[data-text]')];
+  const t = document.getElementById('f-text'), c = document.getElementById('f-category'), s = document.getElementById('f-status'),
+        df = document.getElementById('f-difficulty'), pr = document.getElementById('f-protocol');
+  function apply() {
+    const q = t.value.trim().toLowerCase();
+    rows.forEach(r => {
+      r.hidden = (q && !r.dataset.text.includes(q)) ||
+                 (c.value && r.dataset.category !== c.value) ||
+                 (df.value && r.dataset.difficulty !== df.value) ||
+                 (pr.value && r.dataset.protocol !== pr.value) ||
+                 (s.value && r.dataset.status !== s.value);
+    });
+  }
+  [t, c, s, df, pr].forEach(el => el.addEventListener('input', apply));
+})();
+</script>
+{% endblock %}

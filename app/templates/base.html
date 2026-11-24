@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CTF-tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% set ep = request.endpoint %}
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('dashboard') }}">ctf<b>_</b>tracker</a>
+      <div class="profile">
+        <span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/><circle cx="12" cy="8" r="4"/></svg></span>
+        <div class="p-main">
+          <strong>{{ side.level.name }}</strong>
+          <span class="muted">Nivå {{ side.level.number }}</span>
+          <div class="progress slim"><span style="width: {{ (side.level.progress * 100)|round|int }}%"></span></div>
+          <span class="p-xp">{{ side.xp }}{% if side.level.next_at %} / {{ side.level.next_at }}{% endif %} <b>XP</b></span>
+        </div>
+        <span class="streak" title="Dager på rad"><svg viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>{{ side.streak.current }}</span>
+      </div>
+      <a class="nav {{ 'active' if ep == 'dashboard' }}" href="{{ url_for('dashboard') }}">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
+      <a class="nav promo" href="{{ url_for('reminder_page') }}">
+        <span class="promo-ico"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>
+        <span><strong>Daglig påminnelse</strong><small>Få varsel på telefonen</small></span><em>›</em>
+      </a>
+      <div class="nav-label">Play</div>
+      <a class="nav {{ 'active' if ep == 'warmup_page' }}" href="{{ url_for('warmup_page') }}">
+        <svg viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>Oppvarming</a>
+      <a class="nav {{ 'active' if ep == 'practice_page' }}" href="{{ url_for('practice_page') }}">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Oppgaver</a>
+      <div class="nav-label">Learn</div>
+      <a class="nav {{ 'active' if ep in ('tasks_page', 'edit_task') }}" href="{{ url_for('tasks_page') }}">
+        <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>Mine logger</a>
+      <div class="nav-label">Resources</div>
+      <a class="nav {{ 'active' if ep in ('report_page',) }}" href="{{ url_for('report_page') }}">
+        <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/></svg>Rapport</a>
+      <a class="nav {{ 'active' if ep == 'git_page' }}" href="{{ url_for('git_page') }}">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 4-12 1-12 4"/></svg>Git</a>
+      <a class="nav {{ 'active' if ep == 'reminder_page' }}" href="{{ url_for('reminder_page') }}">
+        <svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Påminnelse</a>
+      <span class="spacer"></span>
+      <a class="cta" href="{{ url_for('new_task') }}">+ Ny oppgave</a>
+    </aside>
+    <div class="content">
+      {% if data_problem %}
+      <div class="banner error" role="alert">
+        <strong>Datamappen er ikke tilgjengelig. Ingenting kan lagres.</strong><br>
+        {{ data_problem }}
+      </div>
+      {% endif %}
+      <main>{% block content %}{% endblock %}</main>
+      <footer>Lagrer i: <code>{{ data_dir_path or 'ikke satt' }}</code></footer>
+    </div>
+  </div>
+</body>
+</html>
